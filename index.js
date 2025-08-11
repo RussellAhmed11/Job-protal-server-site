@@ -1,9 +1,9 @@
-const express=require('express');
-const cors=require("cors");
+const express = require('express');
+const cors = require("cors");
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const app=express();
-const port=process.env.PORT ||5000;
+const app = express();
+const port = process.env.PORT || 5000;
 
 // midelware
 app.use(cors());
@@ -24,21 +24,44 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     // job related apisProtals
-     const jobsCollection=client.db('JobsPortal').collection('Jobs')
+    const jobsCollection = client.db('JobsPortal').collection('Jobs')
+    const jobApplicationCollections = client.db('JobsPortal').collection('JobApplication')
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
-    app.get('/jobs',async(req,res)=>{
-        const cursor=jobsCollection.find();
-        const result= await cursor.toArray();
-        res.send(result)
+    app.get('/jobs', async (req, res) => {
+      const cursor = jobsCollection.find();
+      const result = await cursor.toArray();
+      res.send(result)
     })
     // job detail api
-    app.get('/jobs/:id',async(req,res)=>{
-        const id=req.params.id;
-        const query={_id:new ObjectId(id)};
-        const result=await jobsCollection.findOne(query);
-        res.send(result)
+    app.get('/jobs/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await jobsCollection.findOne(query);
+      res.send(result)
+    })
+    // job application apis
+    app.get('/job-application', async (req, res) => {
+      const email = req.query.email;
+      const query = {applicant_email:email};
+      const result=await jobApplicationCollections.find(query).toArray();
+      for(const application of result){
+        const query1={_id: new ObjectId(application.job_id)}
+          const job=await jobsCollection.findOne(query1);
+          if(job){
+            application.title=job.title;
+            application.location=job.location;
+            application.company=job.commany;
+            application.company_logo=job.company_logo;
+          }
+        }
+      res.send(result);
+    })
+    app.post('/job-application', async (req, res) => {
+      const application = req.body;
+      const result = await jobApplicationCollections.insertOne(application);
+      res.send(result)
     })
   } finally {
     // Ensures that the client will close when you finish/error
@@ -46,9 +69,9 @@ async function run() {
   }
 }
 run().catch(console.dir);
-app.get('/',(req,res)=>{
-    res.send('job is falling please wait');
+app.get('/', (req, res) => {
+  res.send('job is falling please wait');
 })
-app.listen(port,()=>{
-    console.log(`job is wating at:${port}`)
+app.listen(port, () => {
+  console.log(`job is wating at:${port}`)
 })
